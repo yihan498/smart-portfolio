@@ -1,0 +1,19 @@
+# Python 生成脚本（仅开发用）
+generate_final.py
+generate_model.py
+generate_model_v2.py
+generate_xlsx_openpyxl.py
+mvo_test.py
+
+# 中间数据文件
+mvo_compact.json
+mvo_table.json
+
+# 旧版文档
+投资组合配置模型.md
+投资组合配置模型.xlsx
+投资组合配置模型1.xlsx
+
+# 系统文件
+.DS_Store
+Thumbs.db

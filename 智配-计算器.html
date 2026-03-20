@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智配 · 计算器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --obsidian:#080C14; --deep:#0D1220; --surface:#131928; --card:#18203A;
+  --border:#232E4A; --gold:#C9A84C; --gold-lt:#E8C966; --gold-dim:#8A6E2F;
+  --white:#F0EDE6; --muted:#8A94A8; --dim:#4A5568;
+  --btc:#F7931A; --us:#3B82F6; --cn:#22C55E; --def:#94A3B8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:var(--obsidian);color:var(--white);font-family:'Noto Serif SC',serif;overflow-x:hidden;display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(8,12,20,.97);
+  border-bottom:1px solid var(--border);
+  padding:.9rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(10px);
+}
+.hdr-brand{display:flex;align-items:center;gap:.75rem;}
+.hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold-dim));border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:var(--obsidian);}
+.hdr-title{font-size:.95rem;font-weight:600;color:var(--white);}
+.hdr-tag{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);padding:.2rem .55rem;border-radius:4px;margin-left:.5rem;}
+.hdr-back{display:flex;align-items:center;gap:.4rem;color:var(--muted);text-decoration:none;font-size:.82rem;transition:color .2s;}
+.hdr-back:hover{color:var(--gold);}
+.hdr-back svg{width:14px;height:14px;}
+
+/* ── MAIN LAYOUT ── */
+main{flex:1;display:grid;grid-template-columns:360px 1fr;min-height:0;}
+
+/* ── LEFT PANEL (inputs) ── */
+.panel-left{
+  background:var(--deep);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  padding:1.75rem 1.5rem;
+  display:flex;flex-direction:column;gap:1.5rem;
+}
+.panel-section-title{
+  font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold);
+  padding-bottom:.6rem;border-bottom:1px solid var(--border);
+  margin-bottom:.25rem;
+}
+.input-group{display:flex;flex-direction:column;gap:.85rem;}
+.field{display:flex;flex-direction:column;gap:.3rem;}
+.field label{font-size:.7rem;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;}
+.field-score{font-size:.72rem;color:var(--gold);font-family:'DM Mono',monospace;}
+.field input[type=number],.field select{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;padding:.6rem .85rem;color:var(--white);
+  font-family:'DM Mono',monospace;font-size:.85rem;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;appearance:none;
+}
+.field input[type=number]:focus,.field select:focus{
+  border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.1);
+}
+.field select option{background:var(--surface);color:var(--white);}
+.field input[type=number]::placeholder{color:var(--dim);}
+
+/* slider */
+.slider-row{display:flex;align-items:center;gap:.75rem;}
+.slider-lbl{font-size:.65rem;color:var(--dim);}
+.field input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:4px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;
+}
+.field input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold-lt),var(--gold));cursor:pointer;
+  box-shadow:0 0 5px rgba(201,168,76,.4);
+}
+.slider-val{font-family:'DM Mono',monospace;font-size:1rem;color:var(--gold);font-weight:500;min-width:1.2rem;text-align:center;}
+
+/* mini factor score bars inside left panel */
+.mini-bar-wrap{height:2px;background:var(--border);border-radius:1px;overflow:hidden;margin-top:.25rem;}
+.mini-bar-fill{height:100%;border-radius:1px;background:linear-gradient(90deg,var(--gold-dim),var(--gold-lt));transition:width .35s ease;}
+
+/* ── RIGHT PANEL (results) ── */
+.panel-right{overflow-y:auto;padding:2rem;display:flex;flex-direction:column;gap:1.5rem;}
+
+/* RS block */
+.rs-card{
+  background:var(--card);border:1px solid rgba(201,168,76,.3);
+  border-radius:16px;padding:1.75rem 2rem;
+  display:grid;grid-template-columns:auto 1fr;gap:2rem;align-items:center;
+  position:relative;
+  min-height: 160px;
+  overflow:visible;
+}
+.rs-card::before{content:'';position:absolute;top:-60%;right:-15%;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.05) 0%,transparent 70%);pointer-events:none;}
+.rs-num-block{text-align:center;}
+.rs-big-label{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.2rem;}
+.rs-big-num{font-family:'DM Mono',monospace;
+font-size:4rem;font-weight:700;line-height:1.1;color:var(--gold-lt);}
+.rs-level{font-size:.78rem;color:var(--muted);margin-top:.3rem;}
+.rs-sigma{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gold-dim);margin-top:.15rem;}
+/* age adjustment badges */
+.age-adj-wrap{margin-top:.55rem;display:flex;flex-direction:column;gap:.25rem;}
+.age-adj-row{font-family:'DM Mono',monospace;font-size:.62rem;display:flex;align-items:center;gap:.4rem;}
+.age-adj-raw{color:var(--dim);}
+.age-adj-badge{padding:.15rem .45rem;border-radius:4px;font-size:.6rem;font-weight:500;}
+.badge-cap{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.25);}
+.badge-boost{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.25);}
+/* 财富保全约束徽章：琥珀色，区别于年龄约束的红色 */
+.badge-wealth{background:rgba(251,146,60,.12);color:#fb923c;border:1px solid rgba(251,146,60,.25);}
+.rs-gauge-wrap{flex:1;}
+.rs-gauge-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:.75rem;}
+.rs-gauge-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-dim),var(--gold-lt));transition:width .5s ease;}
+.rs-desc{font-size:.8rem;color:var(--muted);line-height:1.7;font-weight:300;}
+.rs-desc strong{color:var(--white);}
+
+/* allocation card */
+.alloc-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.75rem 2rem;}
+.alloc-card-title{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;}
+.stack-bar{display:flex;height:32px;border-radius:8px;overflow:hidden;margin-bottom:1.25rem;gap:1px;}
+.stack-seg{height:100%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:.7rem;font-weight:500;color:rgba(255,255,255,.85);overflow:hidden;white-space:nowrap;transition:width .5s ease;}
+.seg-btc{background:var(--btc);}
+.seg-us{background:var(--us);}
+.seg-cn{background:var(--cn);}
+.seg-def{background:var(--def);}
+.legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem;}
+.legend-row{display:flex;align-items:center;gap:.6rem;}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.legend-name{font-size:.75rem;color:var(--muted);flex:1;}
+.legend-pct{font-family:'DM Mono',monospace;font-size:.85rem;color:var(--white);font-weight:500;}
+
+/* stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.stat-cell{background:var(--surface);padding:1.1rem 1rem;text-align:center;}
+.stat-val{font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:500;color:var(--gold);display:block;}
+.stat-lbl{font-size:.63rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+
+/* factor scores table */
+.fscore-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.75rem 2rem;}
+.fscore-card-title{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1.1rem;}
+.fscore-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem .75rem;}
+.fscore-row{display:flex;align-items:center;gap:.6rem;}
+.fscore-code{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--gold);min-width:2.2rem;}
+.fscore-name{font-size:.72rem;color:var(--muted);flex:1;}
+.fscore-bar{width:48px;height:3px;background:var(--border);border-radius:1px;overflow:hidden;}
+.fscore-bar-fill{height:100%;border-radius:1px;background:linear-gradient(90deg,var(--gold-dim),var(--gold-lt));transition:width .35s ease;}
+.fscore-val{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--white);min-width:2rem;text-align:right;}
+
+/* interp 
+.interp-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;font-size:.85rem;color:var(--muted);line-height:1.8;font-weight:300;}
+.interp-card strong{color:var(--white);}*/
+
+/* disclaimer footer */
+.calc-footer{padding:1rem 2rem;border-top:1px solid var(--border);background:var(--deep);}
+.calc-footer p{font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;text-align:center;}
+
+/* MOBILE */
+@media(max-width:800px){
+  main{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .panel-left{border-right:none;border-bottom:1px solid var(--border);max-height:50vh;}
+  .legend-grid{grid-template-columns:1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .fscore-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-brand">
+    <div class="hdr-logo">智</div>
+    <span class="hdr-title">智配 · 配置计算器</span>
+    <span class="hdr-tag">v2.2</span>
+  </div>
+  <a href="智配-产品介绍.html" class="hdr-back">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M9 2L4 7l5 5"/>
+    </svg>
+    返回产品介绍
+  </a>
+</header>
+
+<main>
+  <!-- LEFT: INPUTS -->
+  <div class="panel-left">
+
+    <div>
+      <div class="panel-section-title">财务指标 &nbsp;·&nbsp; 自动计算 F1–F5</div>
+      <div class="input-group">
+
+        <div class="field">
+          <label>年龄（岁）<span class="field-score" id="fs-f1">F1 —</span></label>
+          <input type="number" id="inp-age" placeholder="30" min="18" max="80" value="30">
+          <div class="mini-bar-wrap"><div class="mini-bar-fill" id="mb-f1" style="width:0%"></div></div>
+        </div>
+
+        <div class="field">
+          <label>年收入（万元）<span class="field-score" id="fs-f2">F2 —</span></label>
+          <input type="number" id="inp-income" placeholder="30" min="0" value="30">
+        </div>
+
+        <div class="field">
+          <label>年支出（万元）</label>
+          <input type="number" id="inp-expenses" placeholder="15" min="0" value="15">
+          <div class="mini-bar-wrap"><div class="mini-bar-fill" id="mb-f2" style="width:0%"></div></div>
+        </div>
+
+        <div class="field">
+          <label>总资产（万元）<span class="field-score" id="fs-f3">F3 —</span></label>
+          <input type="number" id="inp-assets" placeholder="100" min="0" value="100">
+          <div class="mini-bar-wrap"><div class="mini-bar-fill" id="mb-f3" style="width:0%"></div></div>
+        </div>
+
+        <div class="field">
+          <label>紧急储备金（万元）<span class="field-score" id="fs-f4">F4 —</span></label>
+          <input type="number" id="inp-emergency" placeholder="10" min="0" value="10">
+          <div class="mini-bar-wrap"><div class="mini-bar-fill" id="mb-f4" style="width:0%"></div></div>
+        </div>
+
+        <div class="field">
+          <label>负债总额（万元）<span class="field-score" id="fs-f5">F5 —</span></label>
+          <input type="number" id="inp-liabilities" placeholder="20" min="0" value="20">
+          <div class="mini-bar-wrap"><div class="mini-bar-fill" id="mb-f5" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">主观评估 &nbsp;·&nbsp; F6–F11</div>
+      <div class="input-group">
+
+        <div class="field">
+          <label>F6 &nbsp;家庭负担<span class="field-score" id="fs-f6">—</span></label>
+          <select id="sel-f6">
+            <option value="10">单身 / 无子女</option>
+            <option value="8">已婚无子女</option>
+            <option value="6" selected>一个子女</option>
+            <option value="4">两个子女</option>
+            <option value="2">三个及以上</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>F7 &nbsp;收入稳定性<span class="field-score" id="fs-f7">—</span></label>
+          <select id="sel-f7">
+            <option value="10">公务员 / 国企</option>
+            <option value="8" selected>大型企业</option>
+            <option value="6">中小企业</option>
+            <option value="4">自雇 / 自由职业</option>
+            <option value="2">创业</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>F8 &nbsp;市场周期<span class="field-score" id="fs-f8">—</span></label>
+          <select id="sel-f8">
+            <option value="10">熊市深底（历史低位）</option>
+            <option value="8">熊市调整</option>
+            <option value="6" selected>震荡整理</option>
+            <option value="4">牛市初期</option>
+            <option value="2">牛市顶部</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>F9 &nbsp;经济周期<span class="field-score" id="fs-f9">—</span></label>
+          <select id="sel-f9">
+            <option value="8">强劲扩张</option>
+            <option value="6" selected>稳定增长</option>
+            <option value="4">经济放缓</option>
+            <option value="2">衰退</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>F10 投资经验<span class="field-score" id="fs-f10">—</span></label>
+          <select id="sel-f10">
+            <option value="10">10年以上</option>
+            <option value="7">5–10年</option>
+            <option value="5" selected>2–5年</option>
+            <option value="3">1–2年</option>
+            <option value="1">1年以下</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>F11 主观风险意愿<span class="field-score" id="fs-f11">—</span></label>
+          <div class="slider-row">
+            <span class="slider-lbl">厌恶</span>
+            <input type="range" id="rng-f11" min="1" max="10" step="1" value="5">
+            <span class="slider-lbl">偏好</span>
+            <span class="slider-val" id="f11-display">5</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: RESULTS -->
+  <div class="panel-right">
+
+    <!-- RS score -->
+    <div class="rs-card">
+      <div class="rs-num-block">
+        <div class="rs-big-label">综合风险得分 RS</div>
+        <div class="rs-big-num" id="rs-num">—</div>
+        <div class="rs-level" id="rs-level">请填写左侧信息</div>
+        <div class="rs-sigma" id="rs-sigma"></div>
+        <div class="age-adj-wrap" id="age-adj-wrap" style="display:none">
+          <div class="age-adj-row">
+            <span class="age-adj-raw">原始得分</span>
+            <span id="rs-raw-display" style="color:var(--muted)">—</span>
+            <span id="age-adj-detail"></span>
+          </div>
+        </div>
+      </div>
+      <div class="rs-gauge-wrap">
+        <div class="rs-gauge-track"><div class="rs-gauge-fill" id="rs-gauge" style="width:0%"></div></div>
+        <div class="rs-desc" id="rs-desc">填写年龄、收入等信息后，模型将实时计算你的综合风险得分（0–10分），并给出对应的最优资产配置建议。</div>
+      </div>
+    </div>
+
+    <!-- Allocation bar -->
+    <div class="alloc-card">
+      <div class="alloc-card-title">最优配置比例（均值-方差优化 · MVO）</div>
+      <div class="stack-bar">
+        <div class="stack-seg seg-btc" id="seg-btc" style="width:2%"></div>
+        <div class="stack-seg seg-us"  id="seg-us"  style="width:15%">15%</div>
+        <div class="stack-seg seg-cn"  id="seg-cn"  style="width:10%"></div>
+        <div class="stack-seg seg-def" id="seg-def" style="width:73%">73%</div>
+      </div>
+      <div class="legend-grid">
+        <div class="legend-row"><div class="legend-dot" style="background:var(--btc)"></div><span class="legend-name">比特币 BTC</span><span class="legend-pct" id="lp-btc">—</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--us)"></div><span class="legend-name">美股优质个股</span><span class="legend-pct" id="lp-us">—</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--cn)"></div><span class="legend-name">中国高分红 / 国债</span><span class="legend-pct" id="lp-cn">—</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--def)"></div><span class="legend-name">美元存款 / 货基</span><span class="legend-pct" id="lp-def">—</span></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-cell"><span class="stat-val" id="st-ret">—</span><span class="stat-lbl">预期年化收益率</span></div>
+      <div class="stat-cell"><span class="stat-val" id="st-vol">—</span><span class="stat-lbl">组合年化波动率</span></div>
+      <div class="stat-cell"><span class="stat-val" id="st-sharpe">—</span><span class="stat-lbl">夏普比率</span></div>
+    </div>
+
+    <!-- Factor scores -->
+    <div class="fscore-card">
+      <div class="fscore-card-title">11因子得分明细</div>
+      <div class="fscore-grid" id="fscore-grid">
+        <div class="fscore-row"><span class="fscore-code">F1</span><span class="fscore-name">年龄 <span style="color:var(--dim);font-size:.6rem">20%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f1" style="width:0%"></div></div><span class="fscore-val" id="sfv-f1">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F2</span><span class="fscore-name">收入储蓄比 <span style="color:var(--dim);font-size:.6rem">15%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f2" style="width:0%"></div></div><span class="fscore-val" id="sfv-f2">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F3</span><span class="fscore-name">资产充裕度 <span style="color:var(--dim);font-size:.6rem">10%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f3" style="width:0%"></div></div><span class="fscore-val" id="sfv-f3">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F4</span><span class="fscore-name">紧急储备金 <span style="color:var(--dim);font-size:.6rem">10%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f4" style="width:0%"></div></div><span class="fscore-val" id="sfv-f4">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F5</span><span class="fscore-name">负债压力 <span style="color:var(--dim);font-size:.6rem">10%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f5" style="width:0%"></div></div><span class="fscore-val" id="sfv-f5">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F6</span><span class="fscore-name">家庭负担 <span style="color:var(--dim);font-size:.6rem">10%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f6" style="width:0%"></div></div><span class="fscore-val" id="sfv-f6">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F7</span><span class="fscore-name">收入稳定性 <span style="color:var(--dim);font-size:.6rem">5%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f7" style="width:0%"></div></div><span class="fscore-val" id="sfv-f7">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F8</span><span class="fscore-name">市场周期 <span style="color:var(--dim);font-size:.6rem">5%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f8" style="width:0%"></div></div><span class="fscore-val" id="sfv-f8">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F9</span><span class="fscore-name">经济周期 <span style="color:var(--dim);font-size:.6rem">5%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f9" style="width:0%"></div></div><span class="fscore-val" id="sfv-f9">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F10</span><span class="fscore-name">投资经验 <span style="color:var(--dim);font-size:.6rem">5%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f10" style="width:0%"></div></div><span class="fscore-val" id="sfv-f10">—</span></div>
+        <div class="fscore-row"><span class="fscore-code">F11</span><span class="fscore-name">主观意愿 <span style="color:var(--dim);font-size:.6rem">5%</span></span><div class="fscore-bar"><div class="fscore-bar-fill" id="sfb-f11" style="width:0%"></div></div><span class="fscore-val" id="sfv-f11">—</span></div>
+      </div>
+    </div>
+    
+    <!-- Interpretation 
+    <div class="interp-card" id="interp-card">填写左侧信息后，此处将给出基于你的RS得分和配置结果的通俗解读。</div>
+    -->
+
+  </div>
+</main>
+
+<div class="calc-footer">
+  <p>本工具仅供量化决策参考，不构成任何投资建议 · 智配 v2.2 · 均值-方差优化 · 11因子RS评分 · 三层约束</p>
+</div>
+
+<script>
+// ============================================================
+// 【MVO 预计算查找表】
+// 键：RS得分（0.0–10.0，步长0.1），值：该目标波动率对应的MVO最优解
+// 字段：vol=目标波动率%, btc/us/cn/def=四类资产配置比例%,
+//       ret=组合预期年化收益率%, pvol=实际组合波动率%, sharpe=夏普比率
+// 资产参数：μ=[BTC20%,美股10%,中国7%,防守4%], σ=[75%,18%,13%,1%]
+// 相关系数矩阵嵌入于MVO优化中（BTC-美股ρ=0.20, BTC-中国ρ=0.10, 美股-中国ρ=0.30等）
+// ============================================================
+const MVO = {"0.0":{"vol":1.0,"btc":0.0,"us":0.5,"cn":0.7,"def":98.8,"ret":4.06,"pvol":1.0,"sharpe":0.056},"0.1":{"vol":1.03,"btc":0.1,"us":1.2,"cn":1.2,"def":97.5,"ret":4.13,"pvol":1.03,"sharpe":0.123},"0.2":{"vol":1.1,"btc":0.2,"us":1.9,"cn":1.7,"def":96.2,"ret":4.19,"pvol":1.1,"sharpe":0.178},"0.3":{"vol":1.18,"btc":0.3,"us":2.6,"cn":2.1,"def":95.1,"ret":4.26,"pvol":1.18,"sharpe":0.219},"0.4":{"vol":1.27,"btc":0.3,"us":3.2,"cn":2.5,"def":94.0,"ret":4.32,"pvol":1.27,"sharpe":0.251},"0.5":{"vol":1.38,"btc":0.4,"us":3.8,"cn":2.9,"def":92.9,"ret":4.38,"pvol":1.38,"sharpe":0.275},"0.6":{"vol":1.5,"btc":0.5,"us":4.4,"cn":3.3,"def":91.8,"ret":4.44,"pvol":1.5,"sharpe":0.294},"0.7":{"vol":1.63,"btc":0.5,"us":5.1,"cn":3.8,"def":90.6,"ret":4.5,"pvol":1.63,"sharpe":0.309},"0.8":{"vol":1.77,"btc":0.6,"us":5.7,"cn":4.2,"def":89.4,"ret":4.57,"pvol":1.77,"sharpe":0.321},"0.9":{"vol":1.92,"btc":0.7,"us":6.4,"cn":4.7,"def":88.3,"ret":4.63,"pvol":1.92,"sharpe":0.331},"1.0":{"vol":2.08,"btc":0.8,"us":7.1,"cn":5.1,"def":87.0,"ret":4.7,"pvol":2.08,"sharpe":0.338},"1.1":{"vol":2.24,"btc":0.8,"us":7.8,"cn":5.6,"def":85.8,"ret":4.77,"pvol":2.24,"sharpe":0.344},"1.2":{"vol":2.41,"btc":0.9,"us":8.5,"cn":6.1,"def":84.5,"ret":4.84,"pvol":2.41,"sharpe":0.349},"1.3":{"vol":2.59,"btc":1.0,"us":9.3,"cn":6.6,"def":83.2,"ret":4.91,"pvol":2.59,"sharpe":0.353},"1.4":{"vol":2.78,"btc":1.1,"us":10.0,"cn":7.1,"def":81.8,"ret":4.99,"pvol":2.78,"sharpe":0.356},"1.5":{"vol":2.98,"btc":1.2,"us":10.8,"cn":7.6,"def":80.4,"ret":5.07,"pvol":2.98,"sharpe":0.359},"1.6":{"vol":3.18,"btc":1.3,"us":11.6,"cn":8.1,"def":79.0,"ret":5.15,"pvol":3.18,"sharpe":0.361},"1.7":{"vol":3.38,"btc":1.4,"us":12.4,"cn":8.7,"def":77.5,"ret":5.23,"pvol":3.38,"sharpe":0.362},"1.8":{"vol":3.6,"btc":1.5,"us":13.3,"cn":9.3,"def":76.0,"ret":5.31,"pvol":3.6,"sharpe":0.364},"1.9":{"vol":3.82,"btc":1.6,"us":14.2,"cn":9.8,"def":74.5,"ret":5.39,"pvol":3.82,"sharpe":0.365},"2.0":{"vol":4.04,"btc":1.7,"us":15.0,"cn":10.4,"def":72.9,"ret":5.48,"pvol":4.04,"sharpe":0.366},"2.1":{"vol":4.27,"btc":1.8,"us":15.9,"cn":11.0,"def":71.3,"ret":5.57,"pvol":4.27,"sharpe":0.367},"2.2":{"vol":4.51,"btc":1.9,"us":16.9,"cn":11.6,"def":69.6,"ret":5.66,"pvol":4.51,"sharpe":0.368},"2.3":{"vol":4.75,"btc":2.0,"us":17.8,"cn":12.3,"def":68.0,"ret":5.75,"pvol":4.75,"sharpe":0.369},"2.4":{"vol":5.0,"btc":2.1,"us":18.8,"cn":12.9,"def":66.3,"ret":5.84,"pvol":5.0,"sharpe":0.369},"2.5":{"vol":5.25,"btc":2.2,"us":19.7,"cn":13.6,"def":64.5,"ret":5.94,"pvol":5.25,"sharpe":0.37},"2.6":{"vol":5.51,"btc":2.3,"us":20.7,"cn":14.2,"def":62.8,"ret":6.04,"pvol":5.51,"sharpe":0.37},"2.7":{"vol":5.77,"btc":2.4,"us":21.7,"cn":14.9,"def":61.0,"ret":6.14,"pvol":5.77,"sharpe":0.37},"2.8":{"vol":6.04,"btc":2.5,"us":22.8,"cn":15.6,"def":59.1,"ret":6.24,"pvol":6.04,"sharpe":0.371},"2.9":{"vol":6.31,"btc":2.6,"us":23.8,"cn":16.3,"def":57.3,"ret":6.34,"pvol":6.31,"sharpe":0.371},"3.0":{"vol":6.59,"btc":2.8,"us":24.9,"cn":17.0,"def":55.4,"ret":6.44,"pvol":6.59,"sharpe":0.371},"3.1":{"vol":6.87,"btc":2.9,"us":26.0,"cn":17.7,"def":53.4,"ret":6.55,"pvol":6.87,"sharpe":0.371},"3.2":{"vol":7.15,"btc":3.0,"us":27.1,"cn":18.4,"def":51.5,"ret":6.66,"pvol":7.15,"sharpe":0.371},"3.3":{"vol":7.45,"btc":3.1,"us":28.2,"cn":19.2,"def":49.5,"ret":6.77,"pvol":7.45,"sharpe":0.372},"3.4":{"vol":7.74,"btc":3.3,"us":29.3,"cn":19.9,"def":47.5,"ret":6.88,"pvol":7.74,"sharpe":0.372},"3.5":{"vol":8.04,"btc":3.4,"us":30.4,"cn":20.7,"def":45.5,"ret":6.99,"pvol":8.04,"sharpe":0.372},"3.6":{"vol":8.34,"btc":3.5,"us":31.6,"cn":21.5,"def":43.4,"ret":7.1,"pvol":8.34,"sharpe":0.372},"3.7":{"vol":8.65,"btc":3.6,"us":32.8,"cn":22.3,"def":41.3,"ret":7.22,"pvol":8.65,"sharpe":0.372},"3.8":{"vol":8.96,"btc":3.8,"us":34.0,"cn":23.1,"def":39.2,"ret":7.34,"pvol":8.96,"sharpe":0.372},"3.9":{"vol":9.28,"btc":3.9,"us":35.2,"cn":23.9,"def":37.0,"ret":7.45,"pvol":9.28,"sharpe":0.372},"4.0":{"vol":9.6,"btc":4.1,"us":36.4,"cn":24.7,"def":34.9,"ret":7.57,"pvol":9.6,"sharpe":0.372},"4.1":{"vol":9.93,"btc":4.2,"us":37.6,"cn":25.5,"def":32.7,"ret":7.69,"pvol":9.93,"sharpe":0.372},"4.2":{"vol":10.25,"btc":4.3,"us":38.9,"cn":26.3,"def":30.4,"ret":7.82,"pvol":10.25,"sharpe":0.372},"4.3":{"vol":10.59,"btc":4.5,"us":40.2,"cn":27.2,"def":28.2,"ret":7.94,"pvol":10.59,"sharpe":0.372},"4.4":{"vol":10.92,"btc":4.6,"us":41.4,"cn":28.0,"def":25.9,"ret":8.07,"pvol":10.92,"sharpe":0.372},"4.5":{"vol":11.26,"btc":4.8,"us":42.7,"cn":28.9,"def":23.6,"ret":8.19,"pvol":11.26,"sharpe":0.372},"4.6":{"vol":11.61,"btc":4.9,"us":44.0,"cn":29.8,"def":21.3,"ret":8.32,"pvol":11.61,"sharpe":0.372},"4.7":{"vol":11.96,"btc":5.1,"us":45.4,"cn":30.7,"def":18.9,"ret":8.45,"pvol":11.96,"sharpe":0.372},"4.8":{"vol":12.31,"btc":5.2,"us":46.7,"cn":31.6,"def":16.5,"ret":8.58,"pvol":12.31,"sharpe":0.372},"4.9":{"vol":12.66,"btc":5.4,"us":48.0,"cn":32.5,"def":14.1,"ret":8.71,"pvol":12.66,"sharpe":0.372},"5.0":{"vol":13.02,"btc":5.5,"us":49.4,"cn":33.4,"def":11.7,"ret":8.85,"pvol":13.02,"sharpe":0.372},"5.1":{"vol":13.38,"btc":5.7,"us":50.8,"cn":34.3,"def":9.2,"ret":8.98,"pvol":13.38,"sharpe":0.372},"5.2":{"vol":13.75,"btc":5.8,"us":52.2,"cn":35.2,"def":6.8,"ret":9.12,"pvol":13.75,"sharpe":0.372},"5.3":{"vol":14.12,"btc":6.0,"us":53.6,"cn":36.2,"def":4.3,"ret":9.26,"pvol":14.12,"sharpe":0.372},"5.4":{"vol":14.49,"btc":6.1,"us":55.0,"cn":37.1,"def":1.7,"ret":9.4,"pvol":14.49,"sharpe":0.372},"5.5":{"vol":14.87,"btc":6.4,"us":56.7,"cn":36.9,"def":0.0,"ret":9.54,"pvol":14.87,"sharpe":0.372},"5.6":{"vol":15.25,"btc":7.0,"us":58.8,"cn":34.2,"def":0.0,"ret":9.67,"pvol":15.25,"sharpe":0.372},"5.7":{"vol":15.63,"btc":7.5,"us":60.8,"cn":31.7,"def":0.0,"ret":9.8,"pvol":15.63,"sharpe":0.371},"5.8":{"vol":16.02,"btc":8.1,"us":62.7,"cn":29.2,"def":0.0,"ret":9.93,"pvol":16.02,"sharpe":0.37},"5.9":{"vol":16.41,"btc":8.6,"us":64.7,"cn":26.7,"def":0.0,"ret":10.06,"pvol":16.41,"sharpe":0.369},"6.0":{"vol":16.8,"btc":9.1,"us":66.6,"cn":24.3,"def":0.0,"ret":10.18,"pvol":16.8,"sharpe":0.368},"6.1":{"vol":17.2,"btc":9.6,"us":68.4,"cn":22.0,"def":0.0,"ret":10.3,"pvol":17.2,"sharpe":0.366},"6.2":{"vol":17.6,"btc":10.2,"us":70.0,"cn":19.8,"def":0.0,"ret":10.42,"pvol":17.6,"sharpe":0.365},"6.3":{"vol":18.0,"btc":11.1,"us":70.0,"cn":18.9,"def":0.0,"ret":10.54,"pvol":18.0,"sharpe":0.363},"6.4":{"vol":18.41,"btc":11.9,"us":70.0,"cn":18.1,"def":0.0,"ret":10.65,"pvol":18.41,"sharpe":0.361},"6.5":{"vol":18.82,"btc":12.8,"us":70.0,"cn":17.2,"def":0.0,"ret":10.76,"pvol":18.82,"sharpe":0.359},"6.6":{"vol":19.23,"btc":13.6,"us":70.0,"cn":16.4,"def":0.0,"ret":10.87,"pvol":19.23,"sharpe":0.357},"6.7":{"vol":19.65,"btc":14.4,"us":70.0,"cn":15.6,"def":0.0,"ret":10.97,"pvol":19.65,"sharpe":0.355},"6.8":{"vol":20.07,"btc":15.2,"us":70.0,"cn":14.8,"def":0.0,"ret":11.08,"pvol":20.07,"sharpe":0.353},"6.9":{"vol":20.49,"btc":16.0,"us":70.0,"cn":14.0,"def":0.0,"ret":11.18,"pvol":20.49,"sharpe":0.351},"7.0":{"vol":20.91,"btc":16.8,"us":70.0,"cn":13.2,"def":0.0,"ret":11.28,"pvol":20.91,"sharpe":0.348},"7.1":{"vol":21.34,"btc":17.6,"us":70.0,"cn":12.4,"def":0.0,"ret":11.38,"pvol":21.34,"sharpe":0.346},"7.2":{"vol":21.77,"btc":18.3,"us":70.0,"cn":11.7,"def":0.0,"ret":11.48,"pvol":21.77,"sharpe":0.344},"7.3":{"vol":22.21,"btc":19.1,"us":70.0,"cn":10.9,"def":0.0,"ret":11.58,"pvol":22.21,"sharpe":0.342},"7.4":{"vol":22.64,"btc":19.9,"us":70.0,"cn":10.1,"def":0.0,"ret":11.68,"pvol":22.64,"sharpe":0.339},"7.5":{"vol":23.08,"btc":20.6,"us":70.0,"cn":9.4,"def":0.0,"ret":11.78,"pvol":23.08,"sharpe":0.337},"7.6":{"vol":23.53,"btc":21.4,"us":70.0,"cn":8.6,"def":0.0,"ret":11.88,"pvol":23.53,"sharpe":0.335},"7.7":{"vol":23.97,"btc":22.1,"us":70.0,"cn":7.9,"def":0.0,"ret":11.98,"pvol":23.97,"sharpe":0.333},"7.8":{"vol":24.42,"btc":22.9,"us":70.0,"cn":7.1,"def":0.0,"ret":12.07,"pvol":24.42,"sharpe":0.331},"7.9":{"vol":24.87,"btc":23.6,"us":70.0,"cn":6.4,"def":0.0,"ret":12.17,"pvol":24.87,"sharpe":0.328},"8.0":{"vol":25.33,"btc":24.4,"us":70.0,"cn":5.6,"def":0.0,"ret":12.27,"pvol":25.33,"sharpe":0.326},"8.1":{"vol":25.79,"btc":25.1,"us":70.0,"cn":4.9,"def":0.0,"ret":12.36,"pvol":25.79,"sharpe":0.324},"8.2":{"vol":26.25,"btc":25.8,"us":70.0,"cn":4.2,"def":0.0,"ret":12.46,"pvol":26.25,"sharpe":0.322},"8.3":{"vol":26.71,"btc":26.6,"us":70.0,"cn":3.4,"def":0.0,"ret":12.55,"pvol":26.71,"sharpe":0.32},"8.4":{"vol":27.18,"btc":27.3,"us":70.0,"cn":2.7,"def":0.0,"ret":12.65,"pvol":27.18,"sharpe":0.318},"8.5":{"vol":27.64,"btc":28.0,"us":70.0,"cn":2.0,"def":0.0,"ret":12.75,"pvol":27.64,"sharpe":0.316},"8.6":{"vol":28.12,"btc":28.8,"us":70.0,"cn":1.2,"def":0.0,"ret":12.84,"pvol":28.12,"sharpe":0.314},"8.7":{"vol":28.59,"btc":29.5,"us":70.0,"cn":0.5,"def":0.0,"ret":12.94,"pvol":28.59,"sharpe":0.313},"8.8":{"vol":29.07,"btc":30.3,"us":69.7,"cn":0.0,"def":0.0,"ret":13.03,"pvol":29.07,"sharpe":0.311},"8.9":{"vol":29.55,"btc":31.1,"us":68.9,"cn":0.0,"def":0.0,"ret":13.11,"pvol":29.55,"sharpe":0.308},"9.0":{"vol":30.03,"btc":32.0,"us":68.0,"cn":0.0,"def":0.0,"ret":13.2,"pvol":30.03,"sharpe":0.306},"9.1":{"vol":30.51,"btc":32.8,"us":67.2,"cn":0.0,"def":0.0,"ret":13.28,"pvol":30.51,"sharpe":0.304},"9.2":{"vol":31.0,"btc":33.7,"us":66.3,"cn":0.0,"def":0.0,"ret":13.37,"pvol":31.0,"sharpe":0.302},"9.3":{"vol":31.49,"btc":34.5,"us":65.5,"cn":0.0,"def":0.0,"ret":13.45,"pvol":31.49,"sharpe":0.3},"9.4":{"vol":31.99,"btc":35.3,"us":64.7,"cn":0.0,"def":0.0,"ret":13.53,"pvol":31.99,"sharpe":0.298},"9.5":{"vol":32.48,"btc":36.2,"us":63.8,"cn":0.0,"def":0.0,"ret":13.62,"pvol":32.48,"sharpe":0.296},"9.6":{"vol":32.98,"btc":37.0,"us":63.0,"cn":0.0,"def":0.0,"ret":13.7,"pvol":32.98,"sharpe":0.294},"9.7":{"vol":33.48,"btc":37.8,"us":62.2,"cn":0.0,"def":0.0,"ret":13.78,"pvol":33.48,"sharpe":0.292},"9.8":{"vol":33.99,"btc":38.7,"us":61.3,"cn":0.0,"def":0.0,"ret":13.87,"pvol":33.99,"sharpe":0.29},"9.9":{"vol":34.49,"btc":39.5,"us":60.5,"cn":0.0,"def":0.0,"ret":13.95,"pvol":34.49,"sharpe":0.288},"10.0":{"vol":35.0,"btc":40.0,"us":60.0,"cn":0.0,"def":0.0,"ret":14.0,"pvol":34.8,"sharpe":0.287}};
+
+// ============================================================
+// 【MVO 查找函数】
+// 将RS得分（可为小数）四舍五入到最近0.1，返回对应行的配置数据
+// ============================================================
+function lookup(rs){
+  return MVO[(Math.round(Math.max(0, Math.min(10, rs)) * 10) / 10).toFixed(1)];
+}
+
+// ============================================================
+// 【因子定义表】
+// id: DOM元素后缀，w: 在RS加权求和中的权重
+// 权重合计=1.0，F1(年龄)权重最高(20%)因其对风险承受的长期决定性影响
+// ============================================================
+const FACTORS = [
+  {id:'f1', code:'F1',  name:'年龄',       w:.20},
+  {id:'f2', code:'F2',  name:'收入储蓄比', w:.15},
+  {id:'f3', code:'F3',  name:'资产充裕度', w:.10},
+  {id:'f4', code:'F4',  name:'紧急储备金', w:.10},
+  {id:'f5', code:'F5',  name:'负债压力',   w:.10},
+  {id:'f6', code:'F6',  name:'家庭负担',   w:.10},
+  {id:'f7', code:'F7',  name:'收入稳定性', w:.05},
+  {id:'f8', code:'F8',  name:'市场周期',   w:.05},
+  {id:'f9', code:'F9',  name:'经济周期',   w:.05},
+  {id:'f10',code:'F10', name:'投资经验',   w:.05},
+  {id:'f11',code:'F11', name:'主观意愿',   w:.05},
+];
+
+// ============================================================
+// 【风险等级描述】
+// 根据RS_final返回对应的中文风险档位标签，显示在RS数字下方
+// ============================================================
+function rsLevel(rs){
+  if(rs < 2)   return '保守型 · 资本保全优先';
+  if(rs < 4)   return '稳健型 · 稳步增长';
+  if(rs < 5.5) return '平衡型 · 均衡配置';
+  if(rs < 7)   return '积极型 · 追求增长';
+  if(rs < 9)   return '进攻型 · 高风险高收益';
+  return              '极限进攻型 · 最大化增长';
+}
+
+// ============================================================
+// 【配置解读文案】
+// 根据RS得分和MVO结果d，生成个性化的通俗解读（富文本格式）
+// ============================================================
+function interp(rs, d){
+  if(rs < 3)   return `你的综合情况以<strong>稳健保守</strong>为主——大部分资金（${d.def.toFixed(0)}%）配置在防守型资产（美元存款/货基），以美股为进攻核心（${d.us.toFixed(0)}%），在保全资本的同时获取稳定收益。`;
+  if(rs < 5)   return `你具备一定风险承受能力，模型建议以<strong>美股为核心仓位（${d.us.toFixed(0)}%）</strong>，辅以中国资产（${d.cn.toFixed(0)}%）分散化，保留${d.def.toFixed(0)}%防守资产作为安全垫。`;
+  if(rs < 6.5) return `你处于平衡进攻区间：<strong>美股（${d.us.toFixed(0)}%）是绝对核心</strong>，中国资产（${d.cn.toFixed(0)}%）提供第二层分散化，BTC（${d.btc.toFixed(0)}%）以低相关性提升组合效率，防守资产趋近归零。`;
+  if(rs < 8)   return `你具备较强风险承受能力：<strong>美股（${d.us.toFixed(0)}%）+ BTC（${d.btc.toFixed(0)}%）</strong>构成主力配置。BTC的价值在于低相关性带来的分散化收益，而非单纯追求高收益。中国资产（${d.cn.toFixed(0)}%）作为辅助分散工具。`;
+  return              `你处于高风险承受区间：<strong>美股（${d.us.toFixed(0)}%）与BTC（${d.btc.toFixed(0)}%）</strong>几乎构成全部配置，中国资产和防守资产归零。这是数学最优的极限进攻配置，请确认自己已具备相应的心理承受能力。`;
+}
+
+// ============================================================
+// 【核心计算函数 calc()】—— 每次输入变化时调用
+// 完整流程：读取输入 → 计算11因子得分 → 加权求和得RS原始值
+//           → 三层约束修正 → MVO查表 → 更新所有UI
+// ============================================================
+function calc(){
+
+  // ── 第一步：读取用户输入 ──────────────────────────────
+  const age = +document.getElementById('inp-age').value       || 0;
+  const inc = +document.getElementById('inp-income').value    || 0;
+  // exp/ast 保证非零，避免除法报错
+  const exp = Math.max(+document.getElementById('inp-expenses').value    || 1, 0.001);
+  const ast = Math.max(+document.getElementById('inp-assets').value      || 0, 0.001);
+  const emr = +document.getElementById('inp-emergency').value || 0;
+  const dbt = +document.getElementById('inp-liabilities').value || 0;
+  // 主观打分类（下拉选择，值已为数字）
+  const f6  = +document.getElementById('sel-f6').value;
+  const f7  = +document.getElementById('sel-f7').value;
+  const f8  = +document.getElementById('sel-f8').value;
+  const f9  = +document.getElementById('sel-f9').value;
+  const f10 = +document.getElementById('sel-f10').value;
+  const f11 = +document.getElementById('rng-f11').value;   // 滑块，1–10
+
+  // ── 第二步：计算11个因子的原始得分（均为0–10分）─────
+  const scores = [
+    // F1 年龄：基准65岁→0分，25岁→10分，线性映射；超出范围截断
+    Math.max(0, Math.min(10, (65 - age) / 40 * 10)),
+
+    // F2 收入储蓄比：储蓄率=(收入-支出)/收入；储蓄率50%→10分（×20倍缩放）
+    Math.min(10, Math.max(0, (inc - exp) / Math.max(inc, 0.001) * 20)),
+
+    // F3 资产充裕度：总资产/年支出/2；20年支出→10分
+    // （注意：高资产虽给F3高分，但wealth_cap从另一维度约束RS上限）
+    Math.min(10, ast / exp / 2),
+
+    // F4 紧急储备金：储备金/月均支出；满足14.4个月→10分（÷1.2缩放）
+    Math.min(10, (emr / (exp / 12)) / 1.2),
+
+    // F5 负债压力：负债/资产比越高→得分越低；净资产为负时得0分
+    Math.max(0, 10 - (dbt / ast) * 10),
+
+    // F6–F11：直接使用用户选择/滑块的数值
+    f6, f7, f8, f9, f10, f11
+  ];
+
+  // ── 第三步：层①加权求和得RS原始值 ───────────────────
+  // RS_raw = Σ(score_i × weight_i)，权重已归一化
+  const ws = [.20, .15, .10, .10, .10, .10, .05, .05, .05, .05, .05];
+  let rs = 0;
+  scores.forEach((s, i) => rs += s * ws[i]);
+  rs = Math.max(0, Math.min(10, rs));   // 钳位到[0,10]
+
+  // ── 第四步：三层约束系统（v2.2核心改动）─────────────
+  const rs_raw = rs;   // 保留原始值用于UI展示
+
+  // 【层②a】青年加速（时间维度·正向激励）
+  // 35岁以下用户，鼓励尽早建立风险资产仓位以积累财富
+  // 公式：boost = (35-age)/35 × 1.5，最大值约+1.07（20岁时）
+  const youth_boost = age < 35 ? Math.max(0, (35 - age) / 35 * 1.5) : 0;
+
+  // 【层②b】年龄上限（时间维度·硬约束）
+  // 随年龄增长，可承受风险的时间窗口收窄，RS被强制下压
+  // 公式：age_cap = max(0.5, 10×((80-age)/55)^0.7)
+  //   40岁→8.0, 55岁→5.76, 65岁→4.03, 75岁→1.87, 80岁→0.5
+  const age_cap = Math.max(0.5, 10 * Math.pow(Math.max(0, 80 - age) / 55, 0.7));
+
+  // 【层③】财富保全上限（规模维度·硬约束）
+  // 当总资产覆盖年支出年数超过一定阈值时，保值优先级高于增值
+  // asset_years = 总资产/年支出
+  // 分段曲线：
+  //   ≤20年  → 10（积累期，无约束）
+  //   20–50年 → 线性从10降到5（成长期）
+  //   50–100年 → 线性从5降到3（保全期）
+  //   >100年  → max(2, 3-(years-100)/100)（传承期，最低2分）
+  const asset_years = ast / exp;
+  const wealth_cap = asset_years <= 20  ? 10
+                   : asset_years <= 50  ? 10 - 5 * (asset_years - 20) / 30
+                   : asset_years <= 100 ? 5  - 2 * (asset_years - 50) / 50
+                   : Math.max(2, 3 - (asset_years - 100) / 100);
+
+  // 【RS_final】= min(原始+青年加速, 年龄上限, 财富上限)
+  // 三个约束独立生效，任一约束均可单独压低最终得分
+  rs = Math.min(
+    Math.max(0, Math.min(rs_raw + youth_boost, 10)),  // 原始+青年加速，上限10
+    age_cap,    // 年龄硬约束
+    wealth_cap  // 财富规模硬约束（v2.2新增）
+  );
+
+  // ── 第五步：更新约束提示徽章 UI ──────────────────────
+  const adjWrap   = document.getElementById('age-adj-wrap');
+  const adjDetail = document.getElementById('age-adj-detail');
+
+  // 判断是否有明显调整（阈值0.05避免浮点噪声触发显示）
+  const hasYouthBoost  = youth_boost > 0.05;
+  const hasAgeCap      = rs < rs_raw + youth_boost - 0.05;
+  const hasWealthCap   = wealth_cap < age_cap && rs < rs_raw + youth_boost - 0.05;
+  const hasAdj = hasYouthBoost || (rs < rs_raw - 0.05);
+
+  adjWrap.style.display = hasAdj ? 'flex' : 'none';
+  if(hasAdj){
+    document.getElementById('rs-raw-display').textContent = rs_raw.toFixed(1);
+    let detail = '';
+    // 绿色徽章：青年加速（正向加分）
+    if(hasYouthBoost)
+      detail += `<span class="age-adj-badge badge-boost">青年加速 +${youth_boost.toFixed(2)}</span>`;
+    // 当wealth_cap比age_cap更具约束力时，优先显示财富保全徽章（琥珀色）
+    if(hasWealthCap)
+      detail += `<span class="age-adj-badge badge-wealth">财富保全 ≤${wealth_cap.toFixed(1)}</span>`;
+    // 否则显示年龄上限徽章（红色）
+    else if(hasAgeCap)
+      detail += `<span class="age-adj-badge badge-cap">年龄上限 ≤${age_cap.toFixed(1)}</span>`;
+    adjDetail.innerHTML = detail;
+  }
+
+  // ── 第六步：更新11因子得分明细（右侧面板底部） ────────
+  FACTORS.forEach((f, i) => {
+    const s = scores[i];
+    document.getElementById('sfv-' + f.id).textContent   = s.toFixed(1);
+    document.getElementById('sfb-' + f.id).style.width   = (s * 10) + '%';
+  });
+
+  // 左侧面板输入框下方的mini进度条（F1–F5）
+  [{el:'mb-f1',s:scores[0]},{el:'mb-f2',s:scores[1]},
+   {el:'mb-f3',s:scores[2]},{el:'mb-f4',s:scores[3]},
+   {el:'mb-f5',s:scores[4]}].forEach(o => {
+    const el = document.getElementById(o.el);
+    if(el) el.style.width = (o.s * 10) + '%';
+  });
+
+  // 左侧面板字段标签旁的分数显示（F1–F11）
+  document.getElementById('fs-f1').textContent  = 'F1 '  + scores[0].toFixed(1);
+  document.getElementById('fs-f2').textContent  = 'F2 '  + scores[1].toFixed(1);
+  document.getElementById('fs-f3').textContent  = 'F3 '  + scores[2].toFixed(1);
+  document.getElementById('fs-f4').textContent  = 'F4 '  + scores[3].toFixed(1);
+  document.getElementById('fs-f5').textContent  = 'F5 '  + scores[4].toFixed(1);
+  document.getElementById('fs-f6').textContent  = scores[5].toFixed(0);
+  document.getElementById('fs-f7').textContent  = scores[6].toFixed(0);
+  document.getElementById('fs-f8').textContent  = scores[7].toFixed(0);
+  document.getElementById('fs-f9').textContent  = scores[8].toFixed(0);
+  document.getElementById('fs-f10').textContent = scores[9].toFixed(0);
+  document.getElementById('fs-f11').textContent = scores[10].toFixed(0);
+
+  // ── 第七步：查表并渲染RS结果区 ────────────────────────
+  const d = lookup(rs);  // 从MVO表中获取对应配置数据
+  // 目标波动率：σ = 1% + 34% × (RS/10)^1.5（非线性映射，低RS时波动率增速慢）
+  const sigma = (0.01 + 0.34 * Math.pow(rs / 10, 1.5)) * 100;
+
+  document.getElementById('rs-num').textContent   = rs.toFixed(1);
+  document.getElementById('rs-level').textContent = rsLevel(rs);
+  document.getElementById('rs-sigma').textContent = 'σ_target = ' + sigma.toFixed(1) + '%';
+  document.getElementById('rs-gauge').style.width = (rs / 10 * 100) + '%';
+  document.getElementById('rs-desc').innerHTML    = interp(rs, d);
+
+  // ── 第八步：渲染资产配置堆叠条形图及图例 ─────────────
+  ['btc', 'us', 'cn', 'def'].forEach(k => {
+    const pct = d[k];
+    document.getElementById('seg-' + k).style.width  = pct + '%';
+    // 仅当宽度≥8%时在色块内显示百分比数字（避免文字溢出）
+    document.getElementById('seg-' + k).textContent  = pct >= 8 ? pct.toFixed(0) + '%' : '';
+    document.getElementById('lp-'  + k).textContent  = pct.toFixed(1) + '%';
+  });
+
+  // ── 第九步：渲染统计指标（预期收益/波动率/夏普比率） ──
+  document.getElementById('st-ret').textContent    = d.ret.toFixed(1)   + '%';
+  document.getElementById('st-vol').textContent    = d.pvol.toFixed(1)  + '%';
+  document.getElementById('st-sharpe').textContent = d.sharpe.toFixed(3);
+}
+
+// ============================================================
+// 【事件监听器注册】
+// 数字输入框：监听 input 事件（每次键入立即触发）
+// 下拉选择框：监听 change 事件（选项切换时触发）
+// 滑块F11：input事件同时更新显示数字和重新计算
+// ============================================================
+['inp-age','inp-income','inp-expenses','inp-assets','inp-emergency','inp-liabilities'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calc);
+});
+['sel-f6','sel-f7','sel-f8','sel-f9','sel-f10'].forEach(id => {
+  document.getElementById(id).addEventListener('change', calc);
+});
+document.getElementById('rng-f11').addEventListener('input', function(){
+  document.getElementById('f11-display').textContent = this.value;  // 同步显示滑块当前值
+  calc();
+});
+
+// ============================================================
+// 【页面初始化】
+// 页面加载后立即用默认值计算一次，避免显示空白状态
+// ============================================================
+calc();
+</script>
+</body>
+</html>
